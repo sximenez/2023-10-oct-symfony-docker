@@ -1,0 +1,64 @@
+# This key creates a network for microservices (e.g. mysql)
+networks:
+  symfony:
+    driver: bridge
+
+# mysql service config
+myqsl:
+  image: mysql:8.0
+  # This key sets port
+  ports:
+    - 3306:3306
+  # This key creates the DB and a user
+  environment:
+    MYSQL_USER: symfony
+    MYSQL_PASSWORD: secret
+    MYSQL_DATABASE: symfony
+    MYSQL_ROOT_PASSWORD: secret
+  # This key persists data, otherwise no storing on DB
+  volumes:
+    - ./mysql:/var/lib/mysql
+  networks:
+    - symfony
+
+# Apache config
+apache:
+  build:
+    context: .
+    dockerfile: apache.dockerfile
+  ports:
+    - 8080:80
+  volumes:
+    - ./src:/var/www/html
+  depends_on:
+    - mysql
+    - php
+  networks:
+    - symfony
+
+# Php config
+php:
+  build:
+    context: .
+    dockerfile: php.dockerfile
+    args:
+      - UID=${UID:-1000}
+      - GID=${UID:-1000}
+    volumes:
+      - ./src:/var/www/html
+    networks:
+      - symfony
+
+# Composer config
+composer:
+  build:
+    context: .
+    dockerfile: composer.dockerfile
+    args:
+      - UID=${UID:-1000}
+      - GID=${UID:-1000}
+  volumes:
+    - ./src:/var/www/html
+  working_dir: /var/www/html
+  networks:
+    - symfony
